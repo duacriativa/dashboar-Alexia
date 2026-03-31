@@ -244,6 +244,13 @@ canvas#fireworks{position:fixed;inset:0;pointer-events:none;z-index:2999}
 .msn-item-name{font-size:11px;font-weight:500;color:var(--white);line-height:1.3}
 .msn-item-sub{font-size:10px;color:var(--gray);margin-top:1px}
 
+/* PROGRESS BAR */
+.prog{background:var(--black2);border:1px solid var(--br);border-radius:var(--r);padding:14px 18px;margin-bottom:var(--g);display:flex;align-items:center;gap:14px}
+.plbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);font-weight:500;white-space:nowrap;flex-shrink:0}
+.ptrack{flex:1;height:6px;background:var(--black4);border-radius:6px;overflow:hidden}
+.pfill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--purple),var(--yellow));transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.ppct{font-family:var(--fd);font-size:24px;letter-spacing:.04em;color:var(--yellow);flex-shrink:0;min-width:54px;text-align:right}
+
 /* FOOTER */
 .footer{margin-top:22px;padding-top:14px;border-top:1px solid var(--br);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:10px;letter-spacing:.04em;color:var(--gray2)}
 .pdot{display:inline-block;width:5px;height:5px;background:var(--ok);border-radius:50%;margin-right:5px;vertical-align:middle;animation:pa 2s ease infinite}
@@ -293,14 +300,20 @@ canvas#fireworks{position:fixed;inset:0;pointer-events:none;z-index:2999}
 
   <div class="stats-row">
     <div class="sc pp"><div class="sn" id="s-total">—</div><div class="sl">Total na semana</div></div>
-    <div class="sc dg clickable" id="sc-hoje" onclick="togglePanel('hoje')" title="Clique para ver a lista">
+    <div class="sc dg clickable" id="sc-hoje" onclick="togglePanel('hoje')">
       <div class="sn" id="s-hoje">—</div><div class="sl">Vence hoje</div>
     </div>
-    <div class="sc wn clickable" id="sc-amanha" onclick="togglePanel('amanha')" title="Clique para ver a lista">
+    <div class="sc wn clickable" id="sc-amanha" onclick="togglePanel('amanha')">
       <div class="sn" id="s-amanha">—</div><div class="sl">Vence amanhã</div>
     </div>
     <div class="sc ok"><div class="sn" id="s-new">—</div><div class="sl">Novas hoje</div></div>
     <div class="sc"><div class="sn" id="s-nodate">—</div><div class="sl">Sem data</div></div>
+  </div>
+
+  <div class="prog">
+    <div class="plbl">Progresso da semana</div>
+    <div class="ptrack"><div class="pfill" id="pfill" style="width:0%"></div></div>
+    <div class="ppct" id="ppct">0%</div>
   </div>
 
   <div class="urgency-panels">
@@ -467,6 +480,7 @@ const TIPO_META = {
   outros:  {icon:'📌', label:'Outros',        cls:'tipo-outros',  tipoTag:'outros',  tagBg:'var(--outros-bg)',tagColor:'var(--outros-color)', tagBorder:'var(--outros-border)'},
 };
 
+let completedIds = new Set(JSON.parse(localStorage.getItem('dua_completed_alexia') || '[]'));
 let weekOffset = 0;
 let allTasks   = [];
 let seenIds    = new Set(JSON.parse(localStorage.getItem('dua_seen_alexia') || '[]'));
@@ -709,6 +723,13 @@ function render() {
   set('s-new',    newToday.length);
   set('s-nodate', nodate.length);
 
+  /* barra de progresso */
+  const totalW = weekPlanned.length;
+  const doneW  = weekPlanned.filter(t => completedIds.has(t.id)).length;
+  const pct    = totalW ? Math.round((doneW / totalW) * 100) : 0;
+  set('ppct', pct + '%');
+  setTimeout(() => { const f=$('pfill'); if(f) f.style.width = pct+'%'; }, 80);
+
   /* badge pulsando no header */
   const badge = $('new-badge');
   if(newToday.length > 0) {
@@ -837,121 +858,95 @@ function buildCard(task) {
   return div;
 }
 
-/* ── PLANEJADOR INTELIGENTE ─────────────────
-   Feed = 180min, Stories = 20min
-   Capacidade = 480min/dia (8h)
-   Agrupa por cliente no mesmo dia
-   Distribui de trás pra frente antes da entrega
+/* ── PLANEJADOR ALEXIA ──────────────────────
+   6 feeds × 180min + 42 stories × 20min = 1920min
+   5 dias × 384min/dia
+   Feeds nos primeiros dias da semana
+   Stories preenchem o resto, por data de entrega agrupadas por cliente
    ─────────────────────────────────────────── */
 const TEMPO = { feed: 180, stories: 20, tiktok: 20, extra: 0, outros: 60 };
-const CAP_DIA = 480;
+const CAP_DIA = 384; /* 1920 / 5 */
 
 function dayKey(d) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-function prevWorkday(d) {
-  const prev = new Date(d);
-  prev.setDate(prev.getDate() - 1);
-  while(prev.getDay() === 0 || prev.getDay() === 6) {
-    prev.setDate(prev.getDate() - 1);
-  }
-  return prev;
-}
-
-function workdaysBetween(start, end) {
-  const days = [];
-  const cur = new Date(start); cur.setHours(0,0,0,0);
-  const e   = new Date(end);   e.setHours(0,0,0,0);
-  while(cur <= e) {
-    if(cur.getDay() !== 0 && cur.getDay() !== 6) days.push(new Date(cur));
-    cur.setDate(cur.getDate() + 1);
-  }
-  return days;
-}
-
 function planTasks(tasks, weekDays) {
-  /* dias úteis da semana visível */
-  const wdKeys = new Set(weekDays.map(d => dayKey(d)));
-  const wdMap  = {};
+  const wdMap = {};
   for(const d of weekDays) wdMap[dayKey(d)] = d;
 
-  /* capacidade restante por dia */
+  const feeds   = tasks.filter(t => t.tipo === 'feed'   && t.due).sort((a,b) => a.due - b.due);
+  const stories = tasks.filter(t => t.tipo === 'stories'&& t.due).sort((a,b) => a.due - b.due);
+  const outros  = tasks.filter(t => t.tipo !== 'feed' && t.tipo !== 'stories' && t.due).sort((a,b) => a.due - b.due);
+  const nodate  = tasks.filter(t => !t.due);
+
+  /* capacidade restante por dia (em minutos) */
   const cap = {};
   for(const d of weekDays) cap[dayKey(d)] = CAP_DIA;
 
-  /* separar tarefas com e sem data */
-  const withDue  = tasks.filter(t => t.due).sort((a,b) => a.due - b.due);
-  const withoutDue = tasks.filter(t => !t.due);
-
-  const planned = [];
-
-  /* Agrupar por cliente+tipo para tentar manter junto */
-  const groups = {};
-  for(const t of withDue) {
-    const key = t.listNome || 'outros';
-    if(!groups[key]) groups[key] = [];
-    groups[key].push(t);
-  }
-
-  /* Para cada tarefa, encontrar o melhor dia de trabalho */
   const taskDay = {};
 
-  /* Primeiro, mapear qual dia útil cada tarefa deve ser feita */
-  for(const t of withDue) {
-    const dueDate = new Date(t.due); dueDate.setHours(23,59,59,999);
-    const tempo   = TEMPO[t.tipo] || 60;
-
-    /* deadline de trabalho = dia útil anterior à entrega */
-    const deadline = prevWorkday(dueDate);
-
-    /* dias úteis disponíveis até o deadline que estão na semana */
-    const avail = workdaysBetween(weekDays[0], deadline)
-      .filter(d => wdKeys.has(dayKey(d)));
-
-    if(!avail.length) {
-      /* não há dia útil na semana antes da entrega → usa o primeiro dia */
-      taskDay[t.id] = dayKey(weekDays[0]);
-    } else {
-      /* tenta colocar no dia do mesmo cliente se já tem espaço */
-      const clienteKey = t.listNome || 'outros';
-      let placed = false;
-
-      /* procura dia que já tem tarefa do mesmo cliente e tem capacidade */
-      for(const d of avail) {
-        const k = dayKey(d);
-        const jaTemCliente = planned.some(p => p.plannedKey === k && p.listNome === clienteKey);
-        if(jaTemCliente && (cap[k]||0) >= tempo) {
-          taskDay[t.id] = k;
-          cap[k] = (cap[k]||CAP_DIA) - tempo;
-          placed = true;
-          break;
-        }
+  /* 1. Distribuir feeds nos primeiros dias da semana (preferência seg→sex) */
+  for(const t of feeds) {
+    for(const d of weekDays) {
+      const k = dayKey(d);
+      if((cap[k]||0) >= 180) {
+        taskDay[t.id] = k;
+        cap[k] -= 180;
+        break;
       }
+    }
+    if(!taskDay[t.id]) taskDay[t.id] = dayKey(weekDays[0]);
+  }
 
-      /* se não achou dia com mesmo cliente, pega o dia com mais espaço */
-      if(!placed) {
-        const sorted = [...avail].sort((a,b) => (cap[dayKey(b)]||0) - (cap[dayKey(a)]||0));
-        const best   = sorted[0];
-        const bk     = dayKey(best);
-        taskDay[t.id] = bk;
-        cap[bk] = (cap[bk]||CAP_DIA) - tempo;
+  /* 2. Distribuir stories agrupando por cliente e respeitando capacidade */
+  /* Agrupar stories por cliente, ordenar clientes por data mais urgente */
+  const storiesByCliente = {};
+  for(const t of stories) {
+    const c = t.listNome || '—';
+    if(!storiesByCliente[c]) storiesByCliente[c] = [];
+    storiesByCliente[c].push(t);
+  }
+  const clientesSorted = Object.keys(storiesByCliente).sort((a,b) => {
+    const minA = Math.min(...storiesByCliente[a].map(t=>t.due));
+    const minB = Math.min(...storiesByCliente[b].map(t=>t.due));
+    return minA - minB;
+  });
+
+  /* Para cada cliente, distribui as stories em sequência nos dias disponíveis */
+  let dayIdx = 0;
+  for(const cliente of clientesSorted) {
+    const clientStories = storiesByCliente[cliente];
+    for(const t of clientStories) {
+      /* Avança o dia se não tiver mais capacidade */
+      while(dayIdx < weekDays.length - 1 && (cap[dayKey(weekDays[dayIdx])]||0) < 20) {
+        dayIdx++;
       }
+      const k = dayKey(weekDays[Math.min(dayIdx, weekDays.length-1)]);
+      taskDay[t.id] = k;
+      cap[k] = (cap[k]||0) - 20;
     }
   }
 
-  /* Montar lista final com plannedDay e dueDate original */
-  for(const t of withDue) {
-    const pk  = taskDay[t.id] || dayKey(weekDays[0]);
-    const pd  = wdMap[pk];
-    planned.push({ ...t, plannedDay: pd || weekDays[0], plannedKey: pk, originalDue: t.due });
+  /* 3. Distribuir outros tipos (demanda extra, tiktok) nos dias com mais espaço */
+  for(const t of outros) {
+    const tempo = TEMPO[t.tipo] || 60;
+    const best  = weekDays.slice().sort((a,b) => (cap[dayKey(b)]||0) - (cap[dayKey(a)]||0))[0];
+    const k     = dayKey(best);
+    taskDay[t.id] = k;
+    cap[k] = (cap[k]||0) - tempo;
   }
 
-  /* tarefas sem data: sem planejamento */
-  for(const t of withoutDue) {
+  /* Montar resultado */
+  const planned = [];
+  for(const t of [...feeds, ...stories, ...outros]) {
+    const pk = taskDay[t.id] || dayKey(weekDays[0]);
+    const pd = wdMap[pk] || weekDays[0];
+    planned.push({ ...t, plannedDay: pd, plannedKey: pk, originalDue: t.due });
+  }
+  for(const t of nodate) {
     planned.push({ ...t, plannedDay: null, plannedKey: null, originalDue: null });
   }
-
   return planned;
 }
 let pendingTask   = null;
@@ -985,6 +980,8 @@ async function confirmMove(statusKey) {
 
   /* Remove o card visualmente */
   cardEl.classList.add('done');
+  completedIds.add(task.id);
+  localStorage.setItem('dua_completed_alexia', JSON.stringify([...completedIds]));
   setTimeout(() => {
     cardEl.style.height = cardEl.offsetHeight + 'px';
     cardEl.style.overflow = 'hidden';
