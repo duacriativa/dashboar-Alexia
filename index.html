@@ -859,48 +859,62 @@ function buildCard(task) {
 }
 
 /* ── PLANEJADOR ALEXIA ──────────────────────
-   6 feeds × 180min + 42 stories × 20min = 1920min
-   5 dias × 384min/dia
-   Feeds nos primeiros dias da semana
-   Stories preenchem o resto, por data de entrega agrupadas por cliente
+   6 feeds × 180min = 1080min
+   42 stories × 20min = 840min
+   Dias com feed (seg/ter/qua): 2 feeds + 6 stories
+   Dias sem feed (qui/sex): 12 stories cada
+   Tarefas não concluídas de dias passados → rollover para hoje
    ─────────────────────────────────────────── */
 const TEMPO = { feed: 180, stories: 20, tiktok: 20, extra: 0, outros: 60 };
-const CAP_DIA = 384; /* 1920 / 5 */
 
 function dayKey(d) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function nextWorkdayInWeek(fromDay, weekDays) {
+  const fromKey = dayKey(fromDay);
+  const idx = weekDays.findIndex(d => dayKey(d) === fromKey);
+  if(idx >= 0 && idx < weekDays.length - 1) return weekDays[idx + 1];
+  return weekDays[weekDays.length - 1];
 }
 
 function planTasks(tasks, weekDays) {
   const wdMap = {};
   for(const d of weekDays) wdMap[dayKey(d)] = d;
 
-  const feeds   = tasks.filter(t => t.tipo === 'feed'   && t.due).sort((a,b) => a.due - b.due);
-  const stories = tasks.filter(t => t.tipo === 'stories'&& t.due).sort((a,b) => a.due - b.due);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = dayKey(today);
+
+  /* Encontra o dia atual na semana (ou o primeiro se hoje não está na semana) */
+  const todayInWeek = weekDays.find(d => dayKey(d) === todayKey) || weekDays[0];
+
+  const feeds   = tasks.filter(t => t.tipo === 'feed'    && t.due).sort((a,b) => a.due - b.due);
+  const stories = tasks.filter(t => t.tipo === 'stories' && t.due).sort((a,b) => a.due - b.due);
   const outros  = tasks.filter(t => t.tipo !== 'feed' && t.tipo !== 'stories' && t.due).sort((a,b) => a.due - b.due);
   const nodate  = tasks.filter(t => !t.due);
 
-  /* capacidade restante por dia (em minutos) */
-  const cap = {};
-  for(const d of weekDays) cap[dayKey(d)] = CAP_DIA;
+  /* Slots por dia: feeds e stories */
+  const slots = [
+    { d: weekDays[0], feeds: 2, stories: 6  }, /* seg */
+    { d: weekDays[1], feeds: 2, stories: 6  }, /* ter */
+    { d: weekDays[2], feeds: 2, stories: 6  }, /* qua */
+    { d: weekDays[3], feeds: 0, stories: 12 }, /* qui */
+    { d: weekDays[4], feeds: 0, stories: 12 }, /* sex */
+  ];
 
   const taskDay = {};
 
-  /* 1. Distribuir feeds nos primeiros dias da semana (preferência seg→sex) */
+  /* 1. Feeds: seg → ter → qua, 2 por dia */
+  let feedSlotIdx = 0;
   for(const t of feeds) {
-    for(const d of weekDays) {
-      const k = dayKey(d);
-      if((cap[k]||0) >= 180) {
-        taskDay[t.id] = k;
-        cap[k] -= 180;
-        break;
-      }
-    }
-    if(!taskDay[t.id]) taskDay[t.id] = dayKey(weekDays[0]);
+    while(feedSlotIdx < slots.length && slots[feedSlotIdx].feeds <= 0) feedSlotIdx++;
+    taskDay[t.id] = feedSlotIdx < slots.length
+      ? dayKey(slots[feedSlotIdx].d)
+      : dayKey(weekDays[0]);
+    if(feedSlotIdx < slots.length) slots[feedSlotIdx].feeds--;
   }
 
-  /* 2. Distribuir stories agrupando por cliente e respeitando capacidade */
-  /* Agrupar stories por cliente, ordenar clientes por data mais urgente */
+  /* 2. Stories: agrupa por cliente (mais urgente primeiro), respeita slots */
   const storiesByCliente = {};
   for(const t of stories) {
     const c = t.listNome || '—';
@@ -913,36 +927,36 @@ function planTasks(tasks, weekDays) {
     return minA - minB;
   });
 
-  /* Para cada cliente, distribui as stories em sequência nos dias disponíveis */
-  let dayIdx = 0;
+  let sSlotIdx = 0;
   for(const cliente of clientesSorted) {
-    const clientStories = storiesByCliente[cliente];
-    for(const t of clientStories) {
-      /* Avança o dia se não tiver mais capacidade */
-      while(dayIdx < weekDays.length - 1 && (cap[dayKey(weekDays[dayIdx])]||0) < 20) {
-        dayIdx++;
-      }
-      const k = dayKey(weekDays[Math.min(dayIdx, weekDays.length-1)]);
-      taskDay[t.id] = k;
-      cap[k] = (cap[k]||0) - 20;
+    for(const t of storiesByCliente[cliente]) {
+      while(sSlotIdx < slots.length && slots[sSlotIdx].stories <= 0) sSlotIdx++;
+      taskDay[t.id] = sSlotIdx < slots.length
+        ? dayKey(slots[sSlotIdx].d)
+        : dayKey(weekDays[weekDays.length-1]);
+      if(sSlotIdx < slots.length) slots[sSlotIdx].stories--;
     }
   }
 
-  /* 3. Distribuir outros tipos (demanda extra, tiktok) nos dias com mais espaço */
+  /* 3. Outros: vai pro dia com mais slots de stories sobrando */
   for(const t of outros) {
-    const tempo = TEMPO[t.tipo] || 60;
-    const best  = weekDays.slice().sort((a,b) => (cap[dayKey(b)]||0) - (cap[dayKey(a)]||0))[0];
-    const k     = dayKey(best);
-    taskDay[t.id] = k;
-    cap[k] = (cap[k]||0) - tempo;
+    const best = [...slots].sort((a,b) => b.stories - a.stories)[0];
+    taskDay[t.id] = dayKey(best.d);
   }
 
-  /* Montar resultado */
+  /* 4. ROLLOVER: tarefas não concluídas cujo dia planejado já passou → hoje */
   const planned = [];
   for(const t of [...feeds, ...stories, ...outros]) {
-    const pk = taskDay[t.id] || dayKey(weekDays[0]);
-    const pd = wdMap[pk] || weekDays[0];
-    planned.push({ ...t, plannedDay: pd, plannedKey: pk, originalDue: t.due });
+    let pk = taskDay[t.id] || dayKey(weekDays[0]);
+    const pd = wdMap[pk];
+
+    /* Se o dia planejado já passou E não foi concluída → move para hoje */
+    if(pd && pd < today && !completedIds.has(t.id)) {
+      pk = todayKey in wdMap ? todayKey : dayKey(todayInWeek);
+    }
+
+    const finalDay = wdMap[pk] || todayInWeek;
+    planned.push({ ...t, plannedDay: finalDay, plannedKey: dayKey(finalDay), originalDue: t.due });
   }
   for(const t of nodate) {
     planned.push({ ...t, plannedDay: null, plannedKey: null, originalDue: null });
