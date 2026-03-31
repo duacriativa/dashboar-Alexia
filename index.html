@@ -151,6 +151,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .pill-prio.high{background:var(--warn-d);color:#FCD34D}
 .pill-prio.normal{background:var(--info-d);color:var(--info)}
 .pill-new{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--ok-d);color:var(--ok)}
+.pill-due{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.06);color:var(--gray);border:1px solid var(--br2)}
 
 /* CONFIRM MODAL */
 .confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
@@ -691,16 +692,18 @@ async function loadData() {
 
 /* ── RENDER ─────────────────────────────── */
 function render() {
+  /* Aplicar planejamento inteligente */
   const days = getWeekDays(weekOffset);
   $('week-label').textContent = getWeekLabel(days);
 
-  const weekTasks  = allTasks.filter(t => t.due && isCurrentWeek(t.due));
-  const hoje       = allTasks.filter(t => t.due && isToday(t.due));
-  const amanha     = allTasks.filter(t => t.due && isTomorrow(t.due));
-  const newToday   = [...new Set(allTasks.filter(t => isNewToday(t.created)).map(t=>t.id))];
-  const nodate     = allTasks.filter(t => !t.due);
+  const planned    = planTasks(allTasks, days);
+  const weekPlanned = planned.filter(t => t.plannedDay && days.some(d => sameDay(d.getTime(), t.plannedDay.getTime())));
+  const hoje       = planned.filter(t => t.plannedDay && isToday(t.plannedDay.getTime()));
+  const amanha     = planned.filter(t => t.plannedDay && isTomorrow(t.plannedDay.getTime()));
+  const newToday   = [...new Set(allTasks.filter(t=>isNewToday(t.created)).map(t=>t.id))];
+  const nodate     = planned.filter(t => !t.plannedDay);
 
-  set('s-total',  weekTasks.length);
+  set('s-total',  weekPlanned.length);
   set('s-hoje',   hoje.length);
   set('s-amanha', amanha.length);
   set('s-new',    newToday.length);
@@ -727,7 +730,7 @@ function render() {
     const day = days[i];
     const now = new Date(); now.setHours(0,0,0,0);
     const todayFlag = day.getTime() === now.getTime();
-    const dayTasks = weekTasks.filter(t => sameDay(t.due, day));
+    const dayTasks = weekPlanned.filter(t => t.plannedDay && sameDay(t.plannedDay.getTime(), day));
 
     const col = document.createElement('div');
     col.className = 'day-col' + (todayFlag ? ' today' : '');
@@ -756,9 +759,7 @@ function render() {
   } else {
     ndWrap.style.display = 'none';
   }
-}
-
-function buildGrouped(tasks) {
+}function buildGrouped(tasks) {
   const groups = {};
   for(const t of tasks) {
     if(!groups[t.tipo]) groups[t.tipo] = [];
@@ -797,6 +798,11 @@ function buildCard(task) {
   check.title = 'Marcar como concluído';
   check.onclick = (e) => { e.stopPropagation(); openConfirm(task, div); };
 
+  /* badge de data real de entrega (só aparece se plannedDay != dueDay) */
+  const dueBadge = (task.originalDue && task.plannedDay && !sameDay(task.originalDue, task.plannedDay))
+    ? `<span class="pill-due">entrega ${fmt(new Date(task.originalDue))}</span>`
+    : '';
+
   const body = document.createElement('div');
   body.className = 'tcard-body';
   body.innerHTML = `
@@ -804,6 +810,7 @@ function buildCard(task) {
     <div class="tcard-meta">
       ${task.parentName ? `<span class="tcard-parent">↳ ${task.parentName}</span>` : ''}
       <span class="pill-prio ${p}">${p==='urgent'?'Urgente':p==='high'?'Alta':'Normal'}</span>
+      ${dueBadge}
       ${isNew ? '<span class="pill-new">nova hoje</span>' : ''}
     </div>`;
   body.onclick = () => openModal(task);
@@ -813,7 +820,123 @@ function buildCard(task) {
   return div;
 }
 
-/* ── CONFIRM MODAL ──────────────────────── */
+/* ── PLANEJADOR INTELIGENTE ─────────────────
+   Feed = 180min, Stories = 20min
+   Capacidade = 480min/dia (8h)
+   Agrupa por cliente no mesmo dia
+   Distribui de trás pra frente antes da entrega
+   ─────────────────────────────────────────── */
+const TEMPO = { feed: 180, stories: 20, tiktok: 20, extra: 0, outros: 60 };
+const CAP_DIA = 480;
+
+function dayKey(d) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function prevWorkday(d) {
+  const prev = new Date(d);
+  prev.setDate(prev.getDate() - 1);
+  while(prev.getDay() === 0 || prev.getDay() === 6) {
+    prev.setDate(prev.getDate() - 1);
+  }
+  return prev;
+}
+
+function workdaysBetween(start, end) {
+  const days = [];
+  const cur = new Date(start); cur.setHours(0,0,0,0);
+  const e   = new Date(end);   e.setHours(0,0,0,0);
+  while(cur <= e) {
+    if(cur.getDay() !== 0 && cur.getDay() !== 6) days.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+
+function planTasks(tasks, weekDays) {
+  /* dias úteis da semana visível */
+  const wdKeys = new Set(weekDays.map(d => dayKey(d)));
+  const wdMap  = {};
+  for(const d of weekDays) wdMap[dayKey(d)] = d;
+
+  /* capacidade restante por dia */
+  const cap = {};
+  for(const d of weekDays) cap[dayKey(d)] = CAP_DIA;
+
+  /* separar tarefas com e sem data */
+  const withDue  = tasks.filter(t => t.due).sort((a,b) => a.due - b.due);
+  const withoutDue = tasks.filter(t => !t.due);
+
+  const planned = [];
+
+  /* Agrupar por cliente+tipo para tentar manter junto */
+  const groups = {};
+  for(const t of withDue) {
+    const key = t.listNome || 'outros';
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  }
+
+  /* Para cada tarefa, encontrar o melhor dia de trabalho */
+  const taskDay = {};
+
+  /* Primeiro, mapear qual dia útil cada tarefa deve ser feita */
+  for(const t of withDue) {
+    const dueDate = new Date(t.due); dueDate.setHours(23,59,59,999);
+    const tempo   = TEMPO[t.tipo] || 60;
+
+    /* deadline de trabalho = dia útil anterior à entrega */
+    const deadline = prevWorkday(dueDate);
+
+    /* dias úteis disponíveis até o deadline que estão na semana */
+    const avail = workdaysBetween(weekDays[0], deadline)
+      .filter(d => wdKeys.has(dayKey(d)));
+
+    if(!avail.length) {
+      /* não há dia útil na semana antes da entrega → usa o primeiro dia */
+      taskDay[t.id] = dayKey(weekDays[0]);
+    } else {
+      /* tenta colocar no dia do mesmo cliente se já tem espaço */
+      const clienteKey = t.listNome || 'outros';
+      let placed = false;
+
+      /* procura dia que já tem tarefa do mesmo cliente e tem capacidade */
+      for(const d of avail) {
+        const k = dayKey(d);
+        const jaTemCliente = planned.some(p => p.plannedKey === k && p.listNome === clienteKey);
+        if(jaTemCliente && (cap[k]||0) >= tempo) {
+          taskDay[t.id] = k;
+          cap[k] = (cap[k]||CAP_DIA) - tempo;
+          placed = true;
+          break;
+        }
+      }
+
+      /* se não achou dia com mesmo cliente, pega o dia com mais espaço */
+      if(!placed) {
+        const sorted = [...avail].sort((a,b) => (cap[dayKey(b)]||0) - (cap[dayKey(a)]||0));
+        const best   = sorted[0];
+        const bk     = dayKey(best);
+        taskDay[t.id] = bk;
+        cap[bk] = (cap[bk]||CAP_DIA) - tempo;
+      }
+    }
+  }
+
+  /* Montar lista final com plannedDay e dueDate original */
+  for(const t of withDue) {
+    const pk  = taskDay[t.id] || dayKey(weekDays[0]);
+    const pd  = wdMap[pk];
+    planned.push({ ...t, plannedDay: pd || weekDays[0], plannedKey: pk, originalDue: t.due });
+  }
+
+  /* tarefas sem data: sem planejamento */
+  for(const t of withoutDue) {
+    planned.push({ ...t, plannedDay: null, plannedKey: null, originalDue: null });
+  }
+
+  return planned;
+}
 let pendingTask   = null;
 let pendingCard   = null;
 
@@ -914,15 +1037,14 @@ function dismissToast(toast) {
 }
 
 function updateCounts() {
-  const days     = getWeekDays(weekOffset);
-  const start    = new Date(days[0]); start.setHours(0,0,0,0);
-  const end      = new Date(days[4]); end.setHours(23,59,59,999);
-  const weekT    = allTasks.filter(t => t.due && t.due>=start.getTime() && t.due<=end.getTime());
-  const hoje     = allTasks.filter(t => t.due && isToday(t.due));
-  const amanha   = allTasks.filter(t => t.due && isTomorrow(t.due));
-  const newToday = [...new Set(allTasks.filter(t=>isNewToday(t.created)).map(t=>t.id))];
-  const nodate   = allTasks.filter(t => !t.due);
-  set('s-total',  weekT.length);
+  const days    = getWeekDays(weekOffset);
+  const planned = planTasks(allTasks, days);
+  const weekP   = planned.filter(t => t.plannedDay && days.some(d => sameDay(d.getTime(), t.plannedDay.getTime())));
+  const hoje    = planned.filter(t => t.plannedDay && isToday(t.plannedDay.getTime()));
+  const amanha  = planned.filter(t => t.plannedDay && isTomorrow(t.plannedDay.getTime()));
+  const newToday= [...new Set(allTasks.filter(t=>isNewToday(t.created)).map(t=>t.id))];
+  const nodate  = planned.filter(t => !t.plannedDay);
+  set('s-total',  weekP.length);
   set('s-hoje',   hoje.length);
   set('s-amanha', amanha.length);
   set('s-new',    newToday.length);
@@ -945,7 +1067,9 @@ async function apiPut(path, body) {
 
 /* ── WIN SCREEN + FOGOS ─────────────────── */
 function checkWin() {
-  const todayTasks = allTasks.filter(t => t.due && isToday(t.due));
+  const days = getWeekDays(weekOffset);
+  const planned = planTasks(allTasks, days);
+  const todayTasks = planned.filter(t => t.plannedDay && isToday(t.plannedDay.getTime()));
   if(todayTasks.length === 0 && allTasks.length > 0) {
     setTimeout(showWin, 400);
   }
