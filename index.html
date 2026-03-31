@@ -914,27 +914,31 @@ function planTasks(tasks, weekDays) {
     if(feedSlotIdx < slots.length) slots[feedSlotIdx].feeds--;
   }
 
-  /* 2. Stories: agrupa por cliente (mais urgente primeiro), respeita slots */
-  const storiesByCliente = {};
+  /* 2. Stories: ordena por data de entrega primeiro, dentro da mesma data agrupa por cliente */
+  /* Agrupa stories por data de entrega */
+  const storiesByDate = {};
   for(const t of stories) {
+    const due = new Date(t.due); due.setHours(0,0,0,0);
+    const dk  = dayKey(due);
+    if(!storiesByDate[dk]) storiesByDate[dk] = {};
     const c = t.listNome || '—';
-    if(!storiesByCliente[c]) storiesByCliente[c] = [];
-    storiesByCliente[c].push(t);
+    if(!storiesByDate[dk][c]) storiesByDate[dk][c] = [];
+    storiesByDate[dk][c].push(t);
   }
-  const clientesSorted = Object.keys(storiesByCliente).sort((a,b) => {
-    const minA = Math.min(...storiesByCliente[a].map(t=>t.due));
-    const minB = Math.min(...storiesByCliente[b].map(t=>t.due));
-    return minA - minB;
-  });
+  /* Ordena as datas */
+  const datesSorted = Object.keys(storiesByDate).sort();
 
   let sSlotIdx = 0;
-  for(const cliente of clientesSorted) {
-    for(const t of storiesByCliente[cliente]) {
-      while(sSlotIdx < slots.length && slots[sSlotIdx].stories <= 0) sSlotIdx++;
-      taskDay[t.id] = sSlotIdx < slots.length
-        ? dayKey(slots[sSlotIdx].d)
-        : dayKey(weekDays[weekDays.length-1]);
-      if(sSlotIdx < slots.length) slots[sSlotIdx].stories--;
+  for(const dk of datesSorted) {
+    const clientesNaData = Object.keys(storiesByDate[dk]).sort();
+    for(const cliente of clientesNaData) {
+      for(const t of storiesByDate[dk][cliente]) {
+        while(sSlotIdx < slots.length && slots[sSlotIdx].stories <= 0) sSlotIdx++;
+        taskDay[t.id] = sSlotIdx < slots.length
+          ? dayKey(slots[sSlotIdx].d)
+          : dayKey(weekDays[weekDays.length-1]);
+        if(sSlotIdx < slots.length) slots[sSlotIdx].stories--;
+      }
     }
   }
 
