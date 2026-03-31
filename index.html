@@ -1084,7 +1084,8 @@ function checkWin() {
   const days = getWeekDays(weekOffset);
   const planned = planTasks(allTasks, days);
   const todayTasks = planned.filter(t => t.plannedDay && isToday(t.plannedDay.getTime()));
-  if(todayTasks.length === 0 && allTasks.length > 0) {
+  const doneTodayCount = todayTasks.filter(t => completedIds.has(t.id)).length;
+  if(todayTasks.length > 0 && doneTodayCount === todayTasks.length) {
     setTimeout(showWin, 400);
   }
 }
