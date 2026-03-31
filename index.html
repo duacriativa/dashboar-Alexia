@@ -134,11 +134,15 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .tipo-outros .tipo-lbl{color:var(--outros-color)}
 
 /* TASK CARDS */
-.tcard{background:var(--black4);border:1px solid var(--br);border-left:2px solid transparent;border-radius:6px;padding:7px 9px;cursor:pointer;transition:all .15s}
-.tcard:hover{border-color:var(--br2);transform:translateY(-1px)}
+.tcard{background:var(--black4);border:1px solid var(--br);border-left:2px solid transparent;border-radius:6px;padding:7px 9px;transition:all .15s;display:flex;align-items:flex-start;gap:8px}
+.tcard:hover{border-color:var(--br2)}
 .tcard.urgent{border-left-color:var(--danger)}
 .tcard.high{border-left-color:var(--warn)}
 .tcard.normal{border-left-color:var(--info)}
+.tcard.done{opacity:.4;pointer-events:none}
+.tcard-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--gray2);background:transparent;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:1px}
+.tcard-check:hover{border-color:var(--ok);background:var(--ok-d)}
+.tcard-body{flex:1;min-width:0;cursor:pointer}
 .tcard-name{font-size:11px;font-weight:500;color:var(--white);line-height:1.4;margin-bottom:3px;word-break:break-word}
 .tcard-meta{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 .tcard-parent{font-size:10px;color:var(--gray)}
@@ -147,6 +151,49 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .pill-prio.high{background:var(--warn-d);color:#FCD34D}
 .pill-prio.normal{background:var(--info-d);color:var(--info)}
 .pill-new{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--ok-d);color:var(--ok)}
+
+/* CONFIRM MODAL */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.confirm-overlay.open{display:flex;animation:fadeIn .15s ease}
+.confirm-box{background:var(--black3);border:1px solid var(--br2);border-radius:14px;width:100%;max-width:360px;padding:20px;animation:slideUp .2s ease}
+.confirm-title{font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px}
+.confirm-task{font-size:11px;color:var(--gray);margin-bottom:18px;line-height:1.5;word-break:break-word}
+.confirm-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);font-weight:500;margin-bottom:8px}
+.confirm-btns{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.confirm-status-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--br2);background:var(--black4);cursor:pointer;transition:all .15s;text-align:left}
+.confirm-status-btn:hover{border-color:var(--br2);background:var(--black5)}
+.confirm-status-btn.revisao:hover{border-color:var(--warn)}
+.confirm-status-btn.aprovacao:hover{border-color:var(--info)}
+.confirm-status-btn.agendamento:hover{border-color:var(--ok)}
+.csb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.csb-dot.revisao{background:var(--warn)}
+.csb-dot.aprovacao{background:var(--info)}
+.csb-dot.agendamento{background:var(--ok)}
+.csb-label{font-size:12px;font-weight:600;color:var(--white)}
+.csb-sub{font-size:10px;color:var(--gray);margin-left:auto}
+.confirm-cancel{width:100%;padding:8px;background:none;border:1px solid var(--br2);border-radius:6px;color:var(--gray);font-family:var(--fb);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.confirm-cancel:hover{color:var(--white);border-color:var(--white)}
+
+/* UNDO TOAST */
+.undo-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--black3);border:1px solid var(--br2);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:12px;z-index:2000;font-size:12px;color:var(--white);box-shadow:0 4px 24px rgba(0,0,0,.5);animation:slideUpFade .3s ease;white-space:nowrap}
+@keyframes slideUpFade{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.undo-toast.hiding{animation:fadeOut .25s ease forwards}
+@keyframes fadeOut{to{opacity:0;transform:translateX(-50%) translateY(10px)}}
+.undo-btn{background:var(--yellow);color:var(--black);border:none;border-radius:4px;font-family:var(--fb);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;cursor:pointer}
+.undo-bar{position:absolute;bottom:0;left:0;height:2px;background:var(--yellow);border-radius:0 0 10px 10px;animation:shrink 5s linear forwards}
+@keyframes shrink{from{width:100%}to{width:0%}}
+
+/* FIREWORKS / WIN SCREEN */
+.win-overlay{position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.85);backdrop-filter:blur(6px)}
+.win-overlay.open{display:flex;animation:fadeIn .3s ease}
+.win-box{text-align:center;animation:winPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes winPop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.win-title{font-family:var(--fd);font-size:80px;letter-spacing:.08em;color:var(--yellow);line-height:1;margin-bottom:8px;text-shadow:0 0 40px rgba(245,230,66,.5)}
+.win-sub{font-size:16px;color:var(--white);margin-bottom:6px;font-weight:600}
+.win-emoji{font-size:48px;margin-bottom:20px;display:block}
+.win-close{background:var(--yellow);color:var(--black);border:none;border-radius:8px;font-family:var(--fb);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:10px 24px;cursor:pointer;transition:all .15s}
+.win-close:hover{background:var(--yellow2);transform:translateY(-2px)}
+canvas#fireworks{position:fixed;inset:0;pointer-events:none;z-index:2999}
 
 /* NO DATE */
 .nodate-wrap{margin-top:var(--g);background:var(--black2);border:1px solid var(--br);border-radius:var(--r);overflow:hidden}
@@ -302,6 +349,45 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
   <span id="ftime">—</span>
 </footer>
 
+<!-- CONFIRM MODAL -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title">Mover tarefa para…</div>
+    <div class="confirm-task" id="confirm-task-name">—</div>
+    <div class="confirm-label">Escolha o próximo status</div>
+    <div class="confirm-btns">
+      <button class="confirm-status-btn revisao" onclick="confirmMove('revisao')">
+        <span class="csb-dot revisao"></span>
+        <span class="csb-label">Revisão</span>
+        <span class="csb-sub">revisão interna</span>
+      </button>
+      <button class="confirm-status-btn aprovacao" onclick="confirmMove('aprovacao')">
+        <span class="csb-dot aprovacao"></span>
+        <span class="csb-label">Em Aprovação (Cliente)</span>
+        <span class="csb-sub">aguardando cliente</span>
+      </button>
+      <button class="confirm-status-btn agendamento" onclick="confirmMove('agendamento')">
+        <span class="csb-dot agendamento"></span>
+        <span class="csb-label">Agendamento</span>
+        <span class="csb-sub">pronto para agendar</span>
+      </button>
+    </div>
+    <button class="confirm-cancel" onclick="closeConfirm()">Cancelar</button>
+  </div>
+</div>
+
+<!-- WIN SCREEN -->
+<canvas id="fireworks"></canvas>
+<div class="win-overlay" id="win-overlay" onclick="closeWin()">
+  <div class="win-box">
+    <span class="win-emoji">🏆</span>
+    <div class="win-title">YOU WIN!</div>
+    <div class="win-sub">Todas as tarefas concluídas!</div>
+    <div style="font-size:13px;color:var(--gray);margin-bottom:24px">Parabéns, você arrasou hoje! 🎆</div>
+    <button class="win-close" onclick="closeWin()">Fechar</button>
+  </div>
+</div>
+
 </main>
 
 <!-- MODAL -->
@@ -354,6 +440,21 @@ function isTemplate(status, name) {
   const s = (status||'').toLowerCase();
   const n = (name||'').toLowerCase();
   return SKIP.some(x => s.includes(x)) || n.startsWith('template') || n.startsWith('templates');
+}
+/* Só mostrar tarefas em "design" ou "alteração" */
+const SHOW_STATUS = ['design','alteração','alteracao','alteration'];
+function isParaDesigner(status) {
+  const s = (status||'').toLowerCase();
+  return SHOW_STATUS.some(x => s.includes(x));
+}
+/* Ignorar subtarefas de template não preenchidas */
+function isTemplateVazio(name, parentName) {
+  const n = (name||'').trim();
+  const p = (parentName||'').toLowerCase();
+  if(n.endsWith(' -') || n === '-') return true;
+  if(/\[XX/.test(n) || /\[XX/.test(parentName||'')) return true;
+  if(/XX\/XX/.test(n) || /XX\/XX/.test(parentName||'')) return true;
+  return false;
 }
 const DESIGNER_USERNAMES = ['alexia','alexiaduacriativa'];
 const ORDER_TIPOS = ['feed','stories','tiktok','extra','outros'];
@@ -501,6 +602,10 @@ async function getSubsForList(lid) {
   for(const sub of subtasks) {
     const ss = (sub.status?.status||'').toLowerCase();
     if(isTemplate(ss, sub.name)) continue;
+    if(!isParaDesigner(ss)) continue;
+    if(seen.has(sub.id)) continue;
+    const mae = maeMap[sub.parent];
+    if(isTemplateVazio(sub.name, mae?.nome)) continue;
     if(!isDesigner(sub.assignees)) continue;
     if(seen.has(sub.id)) continue;
     const due = parseInt(sub.due_date||0);
@@ -520,6 +625,8 @@ async function getSubsForList(lid) {
   for(const t of maes) {
     const tStatus = (t.status?.status||'').toLowerCase();
     if(isTemplate(tStatus, t.name)) continue;
+    if(!isParaDesigner(tStatus)) continue;
+    if(isTemplateVazio(t.name, null)) continue;
     if(!isDesigner(t.assignees)) continue;
     const tipo = detectTipo(t.name);
     if(tipo === 'stories') continue; /* stories: sempre ignorar mãe */
@@ -685,15 +792,240 @@ function buildCard(task) {
   const isNew = isNewToday(task.created);
   const div   = document.createElement('div');
   div.className = `tcard ${p}`;
-  div.innerHTML = `
+  div.dataset.id = task.id;
+
+  const check = document.createElement('div');
+  check.className = 'tcard-check';
+  check.title = 'Marcar como concluído';
+  check.onclick = (e) => { e.stopPropagation(); openConfirm(task, div); };
+
+  const body = document.createElement('div');
+  body.className = 'tcard-body';
+  body.innerHTML = `
     <div class="tcard-name">${task.name}</div>
     <div class="tcard-meta">
       ${task.parentName ? `<span class="tcard-parent">↳ ${task.parentName}</span>` : ''}
       <span class="pill-prio ${p}">${p==='urgent'?'Urgente':p==='high'?'Alta':'Normal'}</span>
       ${isNew ? '<span class="pill-new">nova hoje</span>' : ''}
     </div>`;
-  div.onclick = () => openModal(task);
+  body.onclick = () => openModal(task);
+
+  div.appendChild(check);
+  div.appendChild(body);
   return div;
+}
+
+/* ── CONFIRM MODAL ──────────────────────── */
+let pendingTask   = null;
+let pendingCard   = null;
+
+const STATUS_MAP = {
+  revisao:     'revisão',
+  aprovacao:   'em aprovação (cliente)',
+  agendamento: 'agendamento',
+};
+
+function openConfirm(task, cardEl) {
+  pendingTask = task;
+  pendingCard = cardEl;
+  $('confirm-task-name').textContent = task.name + (task.listNome ? ` — ${task.listNome}` : '');
+  $('confirm-overlay').classList.add('open');
+}
+
+function closeConfirm() {
+  $('confirm-overlay').classList.remove('open');
+  pendingTask = null;
+  pendingCard = null;
+}
+
+async function confirmMove(statusKey) {
+  if(!pendingTask || !pendingCard) return;
+  const task    = pendingTask;
+  const cardEl  = pendingCard;
+  const statusLabel = STATUS_MAP[statusKey];
+  closeConfirm();
+
+  /* Remove o card visualmente */
+  cardEl.classList.add('done');
+  setTimeout(() => {
+    cardEl.style.height = cardEl.offsetHeight + 'px';
+    cardEl.style.overflow = 'hidden';
+    cardEl.style.transition = 'height .3s ease, opacity .3s ease, margin .3s ease';
+    requestAnimationFrame(() => {
+      cardEl.style.height = '0';
+      cardEl.style.opacity = '0';
+      cardEl.style.marginBottom = '0';
+    });
+    setTimeout(() => {
+      cardEl.remove();
+      allTasks = allTasks.filter(t => t.id !== task.id);
+      checkWin();
+      updateCounts();
+    }, 320);
+  }, 50);
+
+  /* Toast de desfazer */
+  showUndoToast(task, statusLabel, cardEl);
+
+  /* Atualiza no ClickUp */
+  try {
+    await apiPut(`/task/${task.id}`, { status: statusLabel });
+  } catch(e) {
+    console.warn('Erro ao atualizar ClickUp:', e);
+  }
+}
+
+function showUndoToast(task, statusLabel, cardEl) {
+  const existing = document.querySelector('.undo-toast');
+  if(existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'undo-toast';
+  toast.innerHTML = `
+    <span>Movido para <strong>${statusLabel}</strong></span>
+    <button class="undo-btn" onclick="undoMove(this, '${task.id}')">Desfazer</button>
+    <div class="undo-bar"></div>`;
+  document.body.appendChild(toast);
+
+  const timer = setTimeout(() => dismissToast(toast), 5000);
+  toast._timer = timer;
+  toast._task  = task;
+  toast._prev  = task.status;
+}
+
+async function undoMove(btn, taskId) {
+  const toast = btn.closest('.undo-toast');
+  clearTimeout(toast._timer);
+  const task  = toast._task;
+  const prev  = toast._prev;
+  dismissToast(toast);
+
+  /* Restaura no ClickUp */
+  try {
+    await apiPut(`/task/${taskId}`, { status: prev });
+  } catch(e) { console.warn('Erro ao desfazer:', e); }
+
+  /* Recarrega o board */
+  loadData();
+}
+
+function dismissToast(toast) {
+  if(!toast || !toast.parentNode) return;
+  toast.classList.add('hiding');
+  setTimeout(() => toast.remove(), 280);
+}
+
+function updateCounts() {
+  const days     = getWeekDays(weekOffset);
+  const start    = new Date(days[0]); start.setHours(0,0,0,0);
+  const end      = new Date(days[4]); end.setHours(23,59,59,999);
+  const weekT    = allTasks.filter(t => t.due && t.due>=start.getTime() && t.due<=end.getTime());
+  const hoje     = allTasks.filter(t => t.due && isToday(t.due));
+  const amanha   = allTasks.filter(t => t.due && isTomorrow(t.due));
+  const newToday = [...new Set(allTasks.filter(t=>isNewToday(t.created)).map(t=>t.id))];
+  const nodate   = allTasks.filter(t => !t.due);
+  set('s-total',  weekT.length);
+  set('s-hoje',   hoje.length);
+  set('s-amanha', amanha.length);
+  set('s-new',    newToday.length);
+  set('s-nodate', nodate.length);
+  const badge = $('new-badge');
+  if(newToday.length>0){set('new-badge-count',newToday.length);set('new-badge-plural',newToday.length===1?'':'s');badge.classList.add('visible');}
+  else{badge.classList.remove('visible');}
+}
+
+/* ── API PUT ────────────────────────────── */
+async function apiPut(path, body) {
+  const r = await fetch(`https://api.clickup.com/api/v2${path}`, {
+    method: 'PUT',
+    headers: { Authorization: TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(`API ${r.status}`);
+  return r.json();
+}
+
+/* ── WIN SCREEN + FOGOS ─────────────────── */
+function checkWin() {
+  const todayTasks = allTasks.filter(t => t.due && isToday(t.due));
+  if(todayTasks.length === 0 && allTasks.length > 0) {
+    setTimeout(showWin, 400);
+  }
+}
+
+function showWin() {
+  $('win-overlay').classList.add('open');
+  startFireworks();
+}
+
+function closeWin() {
+  $('win-overlay').classList.remove('open');
+  stopFireworks();
+}
+
+let fwTimer = null;
+let fwCtx   = null;
+let fwParticles = [];
+
+function startFireworks() {
+  const canvas = $('fireworks');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  fwCtx = canvas.getContext('2d');
+  fwParticles = [];
+  launchBurst();
+  launchBurst();
+  fwTimer = setInterval(launchBurst, 700);
+}
+
+function stopFireworks() {
+  clearInterval(fwTimer);
+  fwTimer = null;
+  const canvas = $('fireworks');
+  if(fwCtx) fwCtx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function launchBurst() {
+  if(!fwCtx) return;
+  const canvas = $('fireworks');
+  const x = Math.random() * canvas.width;
+  const y = Math.random() * canvas.height * 0.6;
+  const colors = ['#F5E642','#7C3AED','#A78BFA','#34D399','#FB923C','#F472B6','#60A5FA','#fff'];
+  const color  = colors[Math.floor(Math.random() * colors.length)];
+  for(let i = 0; i < 60; i++) {
+    const angle = (Math.PI * 2 / 60) * i;
+    const speed = 2 + Math.random() * 5;
+    fwParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      alpha: 1,
+      color,
+      size: 2 + Math.random() * 2,
+    });
+  }
+  animateFireworks();
+}
+
+function animateFireworks() {
+  if(!fwCtx) return;
+  const canvas = $('fireworks');
+  fwCtx.clearRect(0, 0, canvas.width, canvas.height);
+  fwParticles = fwParticles.filter(p => p.alpha > 0.02);
+  for(const p of fwParticles) {
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.vy += 0.12;
+    p.vx *= 0.98;
+    p.alpha -= 0.018;
+    fwCtx.globalAlpha = p.alpha;
+    fwCtx.fillStyle   = p.color;
+    fwCtx.beginPath();
+    fwCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    fwCtx.fill();
+  }
+  fwCtx.globalAlpha = 1;
+  if(fwParticles.length > 0) requestAnimationFrame(animateFireworks);
 }
 
 function renderUrgencyList(elId, tasks, cls) {
