@@ -49,6 +49,10 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .designer-badge{display:inline-flex;align-items:center;gap:8px;background:var(--designer-bg);border:1px solid var(--designer-border);border-radius:20px;padding:4px 14px 4px 6px;}
 .designer-av{width:28px;height:28px;border-radius:50%;background:var(--designer);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
 .designer-name{font-size:13px;font-weight:600;color:var(--designer);}
+.new-badge{display:none;align-items:center;gap:6px;background:var(--ok-d);border:1px solid rgba(34,197,94,.3);border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ok);white-space:nowrap}
+.new-badge.visible{display:inline-flex}
+.new-badge .nbdot{width:6px;height:6px;background:var(--ok);border-radius:50%;flex-shrink:0;animation:nblink 1.2s ease infinite}
+@keyframes nblink{0%,100%{opacity:1}50%{opacity:.15}}
 .hdr-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--fb);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:9px 16px;border-radius:6px;border:none;cursor:pointer;transition:all .18s;white-space:nowrap}
 .btn-y{background:var(--yellow);color:var(--black)}
@@ -219,6 +223,10 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
     <div style="font-size:9px;color:var(--gray);letter-spacing:.08em;text-transform:uppercase;margin-top:3px;text-align:center">Seg → Sex</div>
   </div>
   <div class="hdr-right">
+    <div class="new-badge" id="new-badge">
+      <span class="nbdot"></span>
+      <span id="new-badge-count">0</span> nova<span id="new-badge-plural">s</span> hoje
+    </div>
     <div class="designer-badge">
       <div class="designer-av">AL</div>
       <span class="designer-name">Alexia</span>
@@ -342,6 +350,11 @@ const CLIENTES = [
   {nome:'Tchu Bi',      listId:'901324505493'},
 ];
 const SKIP  = ['template','templates'];
+function isTemplate(status, name) {
+  const s = (status||'').toLowerCase();
+  const n = (name||'').toLowerCase();
+  return SKIP.some(x => s.includes(x)) || n.startsWith('template') || n.startsWith('templates');
+}
 const DESIGNER_USERNAMES = ['alexia','alexiaduacriativa'];
 const ORDER_TIPOS = ['feed','stories','tiktok','extra','outros'];
 const TIPO_META = {
@@ -487,7 +500,7 @@ async function getSubsForList(lid) {
   /* subtarefas atribuídas à Alexia */
   for(const sub of subtasks) {
     const ss = (sub.status?.status||'').toLowerCase();
-    if(SKIP.some(x => ss.includes(x))) continue;
+    if(isTemplate(ss, sub.name)) continue;
     if(!isDesigner(sub.assignees)) continue;
     if(seen.has(sub.id)) continue;
     const due = parseInt(sub.due_date||0);
@@ -503,14 +516,14 @@ async function getSubsForList(lid) {
     });
   }
 
-  /* tarefas mãe sem filhas (exceto stories), atribuídas à Alexia */
+  /* tarefas mãe sem filhas (exceto stories E tiktok), atribuídas à Alexia */
   for(const t of maes) {
     const tStatus = (t.status?.status||'').toLowerCase();
-    if(SKIP.some(x => tStatus.includes(x))) continue;
+    if(isTemplate(tStatus, t.name)) continue;
     if(!isDesigner(t.assignees)) continue;
     const tipo = detectTipo(t.name);
-    if(tipo === 'stories') continue;
-    if(idsComSubs.has(t.id)) continue;
+    if(tipo === 'stories') continue; /* stories: sempre ignorar mãe */
+    if(idsComSubs.has(t.id)) continue; /* tem filhas: filhas já foram adicionadas */
     if(seen.has(t.id)) continue;
     seen.add(t.id);
     const due = parseInt(t.due_date||0);
@@ -587,6 +600,16 @@ function render() {
   set('s-amanha', amanha.length);
   set('s-new',    newToday.length);
   set('s-nodate', nodate.length);
+
+  /* badge pulsando no header */
+  const badge = $('new-badge');
+  if(newToday.length > 0) {
+    set('new-badge-count', newToday.length);
+    set('new-badge-plural', newToday.length === 1 ? '' : 's');
+    badge.classList.add('visible');
+  } else {
+    badge.classList.remove('visible');
+  }
 
   renderUrgencyList('list-hoje',   hoje,   'today');
   renderUrgencyList('list-amanha', amanha, 'tomorrow');
