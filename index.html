@@ -607,10 +607,8 @@ async function getSubsForList(lid) {
     const mae = maeMap[sub.parent];
     if(isTemplateVazio(sub.name, mae?.nome)) continue;
     if(!isDesigner(sub.assignees)) continue;
-    if(seen.has(sub.id)) continue;
     const due = parseInt(sub.due_date||0);
     seen.add(sub.id);
-    const mae  = maeMap[sub.parent];
     const tipo = mae ? mae.tipo : detectTipo(sub.name);
     out.push({
       id: sub.id, name: sub.name, status: ss, due: due||null, tipo,
