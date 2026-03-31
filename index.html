@@ -53,6 +53,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .new-badge.visible{display:inline-flex}
 .new-badge .nbdot{width:6px;height:6px;background:var(--ok);border-radius:50%;flex-shrink:0;animation:nblink 1.2s ease infinite}
 @keyframes nblink{0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes floatUp{0%{transform:translate(-50%,-50%) scale(.8);opacity:1}100%{transform:translate(-50%,-120px) scale(1.1);opacity:0}}
 .hdr-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--fb);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:9px 16px;border-radius:6px;border:none;cursor:pointer;transition:all .18s;white-space:nowrap}
 .btn-y{background:var(--yellow);color:var(--black)}
@@ -978,11 +979,14 @@ async function confirmMove(statusKey) {
   const statusLabel = STATUS_MAP[statusKey];
   closeConfirm();
 
-  /* Remove o card visualmente */
-  cardEl.classList.add('done');
+  /* Mini celebração antes de sumir */
+  miniCelebrate(cardEl);
+
+  /* Remove o card visualmente após a celebração */
   completedIds.add(task.id);
   localStorage.setItem('dua_completed_alexia', JSON.stringify([...completedIds]));
   setTimeout(() => {
+    cardEl.classList.add('done');
     cardEl.style.height = cardEl.offsetHeight + 'px';
     cardEl.style.overflow = 'hidden';
     cardEl.style.transition = 'height .3s ease, opacity .3s ease, margin .3s ease';
@@ -997,7 +1001,7 @@ async function confirmMove(statusKey) {
       checkWin();
       updateCounts();
     }, 320);
-  }, 50);
+  }, 900);
 
   /* Toast de desfazer */
   showUndoToast(task, statusLabel, cardEl);
@@ -1008,6 +1012,64 @@ async function confirmMove(statusKey) {
   } catch(e) {
     console.warn('Erro ao atualizar ClickUp:', e);
   }
+}
+
+function miniCelebrate(cardEl) {
+  const rect = cardEl.getBoundingClientRect();
+  const cx   = rect.left + rect.width / 2;
+  const cy   = rect.top  + rect.height / 2;
+
+  /* Frase flutuante */
+  const label = document.createElement('div');
+  label.textContent = '- 1 tarefa!';
+  label.style.cssText = `
+    position:fixed;left:${cx}px;top:${cy}px;
+    transform:translate(-50%,-50%);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:22px;letter-spacing:.06em;
+    color:#F5E642;pointer-events:none;
+    z-index:3000;white-space:nowrap;
+    animation:floatUp .9s cubic-bezier(.2,.8,.4,1) forwards;
+  `;
+  document.body.appendChild(label);
+  setTimeout(() => label.remove(), 950);
+
+  /* Mini confete canvas */
+  const cvs = document.createElement('canvas');
+  cvs.width  = 200;
+  cvs.height = 200;
+  cvs.style.cssText = `
+    position:fixed;
+    left:${cx - 100}px;top:${cy - 100}px;
+    pointer-events:none;z-index:2999;
+  `;
+  document.body.appendChild(cvs);
+  const ctx = cvs.getContext('2d');
+
+  const colors = ['#F5E642','#7C3AED','#34D399','#FB923C','#F472B6','#fff'];
+  const pts = Array.from({length:35}, () => ({
+    x:100, y:100,
+    vx:(Math.random()-0.5)*12,
+    vy:(Math.random()-0.5)*12 - 3,
+    color: colors[Math.floor(Math.random()*colors.length)],
+    size: 2+Math.random()*3,
+    alpha:1,
+  }));
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0,0,200,200);
+    for(const p of pts){
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.4; p.alpha-=0.03;
+      if(p.alpha<=0) continue;
+      ctx.globalAlpha=p.alpha; ctx.fillStyle=p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    if(++frame < 35) requestAnimationFrame(draw);
+    else cvs.remove();
+  }
+  draw();
 }
 
 function showUndoToast(task, statusLabel, cardEl) {
