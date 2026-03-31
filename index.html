@@ -776,11 +776,28 @@ function render() {
       <span class="tipo-lbl">${meta.label}</span>
       <span class="tipo-cnt">${groups[tipo].length}</span>
     </div>`;
-    const sorted = groups[tipo].sort((a,b) => {
-      const po = {urgent:0,high:1,normal:2};
-      return (po[getPrio(a.due||0)]||2) - (po[getPrio(b.due||0)]||2);
+
+    /* Agrupa por cliente, ordena clientes por data mais urgente */
+    const byCliente = {};
+    for(const t of groups[tipo]) {
+      const c = t.listNome || '—';
+      if(!byCliente[c]) byCliente[c] = [];
+      byCliente[c].push(t);
+    }
+    /* Ordena cada cliente internamente por data */
+    for(const c of Object.keys(byCliente)) {
+      byCliente[c].sort((a,b) => (a.originalDue||a.due||0) - (b.originalDue||b.due||0));
+    }
+    /* Ordena os clientes pelo due mais urgente do grupo */
+    const clientesSorted = Object.keys(byCliente).sort((a,b) => {
+      const minA = Math.min(...byCliente[a].map(t => t.originalDue||t.due||Infinity));
+      const minB = Math.min(...byCliente[b].map(t => t.originalDue||t.due||Infinity));
+      return minA - minB;
     });
-    for(const t of sorted) g.appendChild(buildCard(t));
+
+    for(const cliente of clientesSorted) {
+      for(const t of byCliente[cliente]) g.appendChild(buildCard(t));
+    }
     frag.appendChild(g);
   }
   return frag;
