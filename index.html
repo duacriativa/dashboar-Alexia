@@ -964,9 +964,11 @@ function openAssigneePicker(task, anchor) {
   const currentIds = (task.assignees||[]).map(a=>String(a.id));
 
   const memberList = members.length ? members : [
-    {id:'me',username:'Alexia Cruz'},{id:'lu',username:'Luana Vieira'},
-    {id:'ci',username:'Ciane'},{id:'is',username:'Isadora Coelho'},
-    {id:'da',username:'Daniel Guedes'},{id:'ar',username:'Ariela Cruz'},
+    {id:112051788, username:'Alexia Cruz'},
+    {id:112051786, username:'Luana Vieira'},
+    {id:112051789, username:'Isadora Coelho'},
+    {id:112051792, username:'Ciane DuaCriativa'},
+    {id:84706086,  username:'Ariela Cruz'},
   ];
 
   picker.innerHTML = memberList.map((m,i) => {
