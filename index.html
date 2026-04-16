@@ -493,7 +493,9 @@ function getWeekRange(offset) {
   const diff=dow===0?-6:1-dow;
   const mon=new Date(now); mon.setDate(now.getDate()+diff+offset*7); mon.setHours(0,0,0,0);
   const fri=new Date(mon); fri.setDate(mon.getDate()+4); fri.setHours(23,59,59,999);
-  return {start:mon, end:fri};
+  /* Estende até segunda seguinte para capturar sáb/dom/seg */
+  const nextMon=new Date(mon); nextMon.setDate(mon.getDate()+7); nextMon.setHours(23,59,59,999);
+  return {start:mon, end:fri, extEnd:nextMon, fri};
 }
 function weekLabel(offset) {
   const {start,end}=getWeekRange(offset);
@@ -614,8 +616,18 @@ function render() {
   $('week-label').textContent=weekLabel(weekOffset);
   const {start,end}=getWeekRange(weekOffset);
 
-  /* Filtra pela semana usando campo "Data" */
-  const weekTasks=allTasks.filter(t=>t.due&&t.due>=start.getTime()&&t.due<=end.getTime());
+  /* Filtra pela semana + sáb/dom/seg seguinte, mapeando para sexta */
+  const {start,end,extEnd,fri}=getWeekRange(weekOffset);
+  const weekTasks=allTasks
+    .filter(t=>t.due&&t.due>=start.getTime()&&t.due<=extEnd.getTime())
+    .map(t=>{
+      const d=new Date(t.due); const dow=d.getDay();
+      /* Sáb(6), Dom(0), Seg(1) → mapeia para sexta */
+      if(dow===6||dow===0||(dow===1&&t.due>end.getTime())){
+        return {...t, due:fri.getTime(), originalDue:t.due};
+      }
+      return {...t, originalDue:t.due};
+    });
   const nodate=allTasks.filter(t=>!t.due);
 
   /* Progresso */
@@ -745,7 +757,9 @@ function buildCard(task) {
     <div class="tcard-meta">
       ${task.parentName?`<span class="tcard-parent">↳ ${task.parentName}</span>`:''}
       <span class="pill-prio ${p}">${p==='urgent'?'Urgente':p==='high'?'Alta':'Normal'}</span>
-      ${task.due?`<span class="pill-due">${fmt(new Date(task.due))}</span>`:''}
+      ${task.originalDue && task.originalDue !== task.due
+        ? `<span class="pill-due">postagem ${fmt(new Date(task.originalDue))}</span>`
+        : task.due ? `<span class="pill-due">${fmt(new Date(task.due))}</span>` : ''}
       ${isNew?'<span class="pill-new">nova hoje</span>':''}
     </div>
     ${buildAssigneeHtml(task)}`;
