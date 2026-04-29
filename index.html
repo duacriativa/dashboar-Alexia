@@ -86,6 +86,51 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .board-wrap{overflow-x:auto;padding-bottom:16px}
 .board{display:flex;gap:var(--g);min-width:max-content;align-items:flex-start}
 
+/* TABS */
+.tabs-nav{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--br)}
+.tab-btn{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:10px 20px;cursor:pointer;color:var(--gray);border:none;border-bottom:2px solid transparent;background:none;font-family:var(--fb);transition:all .15s}
+.tab-btn:hover:not(.active){color:var(--white)}
+.tab-btn.active{color:var(--yellow);border-bottom-color:var(--yellow)}
+.cal-wrap{display:none}.cal-wrap.visible{display:block}
+.board-tab{display:none}.board-tab.visible{display:block}
+.cal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-month-title{font-family:var(--fd);font-size:32px;letter-spacing:.04em;color:var(--white)}
+.cal-controls{display:flex;align-items:center;gap:8px}
+.cal-nav-btn{background:none;border:1px solid var(--br2);color:var(--gray);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.cal-nav-btn:hover{background:var(--black3);color:var(--white);border-color:var(--yellow)}
+.cal-add-btn{font-family:var(--fb);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:7px 14px;border-radius:6px;border:none;background:var(--yellow);color:var(--black);cursor:pointer}
+.cal-add-btn:hover{opacity:.85}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px}
+.cal-wd{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);text-align:center;padding:5px 0}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-cell{min-height:80px;background:var(--black2);border-radius:7px;padding:6px;border:1px solid var(--br);cursor:pointer;transition:border-color .12s}
+.cal-cell:hover{border-color:var(--br2)}.cal-cell.today{border-color:var(--yellow)}.cal-cell.other-month{opacity:.3}
+.cal-day-num{font-size:11px;font-weight:500;color:var(--gray);margin-bottom:3px}
+.cal-cell.today .cal-day-num{color:var(--yellow);font-weight:700}
+.cal-event{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;margin-bottom:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.cal-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.cal-leg{display:flex;align-items:center;gap:5px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);font-weight:500}
+.cal-leg-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.ev-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.ev-overlay.open{display:flex;animation:fadeIn .15s ease}
+.ev-box{background:var(--black3);border:1px solid var(--br2);border-radius:14px;width:100%;max-width:360px;padding:20px;animation:slideUp .2s ease;max-height:90dvh;overflow-y:auto}
+.ev-title{font-family:var(--fd);font-size:24px;letter-spacing:.04em;color:var(--white);margin-bottom:14px}
+.ev-field{margin-bottom:10px}
+.ev-lbl{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);font-weight:500;display:block;margin-bottom:4px}
+.ev-inp,.ev-sel{width:100%;padding:8px 10px;background:var(--black4);border:1px solid var(--br2);border-radius:6px;color:var(--white);font-family:var(--fb);font-size:13px;outline:none}
+.ev-inp:focus,.ev-sel:focus{border-color:var(--yellow)}
+.ev-sel option{background:var(--black3)}
+.ev-btns{display:flex;gap:8px;margin-top:14px}
+.ev-save{flex:1;background:var(--yellow);color:var(--black);border:none;border-radius:6px;font-family:var(--fb);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:10px;cursor:pointer}
+.ev-cancel{background:none;border:1px solid var(--br2);color:var(--gray);border-radius:6px;font-family:var(--fb);font-size:11px;padding:10px 14px;cursor:pointer}
+.ev-cancel:hover{color:var(--white)}
+.ev-list{margin-top:10px;display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto}
+.ev-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--black4);border-radius:6px}
+.ev-item-name{flex:1;font-size:12px;font-weight:500;color:var(--white)}
+.ev-item-cli{font-size:10px;color:var(--gray);white-space:nowrap}
+.ev-item-del{background:none;border:none;color:var(--gray);cursor:pointer;font-size:13px;padding:2px 4px}
+.ev-item-del:hover{color:#FCA5A5}
+
 /* CLIENT COLUMN */
 .cli-col{background:var(--black2);border:1px solid var(--br);border-radius:var(--r);width:260px;flex-shrink:0;overflow:hidden;transition:border-color .15s;display:flex;flex-direction:column}
 .cli-col.drag-active{border-color:var(--yellow)}
@@ -280,7 +325,13 @@ canvas#fireworks{position:fixed;inset:0;pointer-events:none;z-index:2999}
 </div>
 
 <div id="dash" style="display:none">
-  <div class="toolbar">
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('board')">📋 Board semanal</button>
+    <button class="tab-btn" onclick="switchTab('cal')">📅 Calendário de datas</button>
+  </div>
+
+  <div class="board-tab visible" id="tab-board">
+    <div class="toolbar">
     <div class="leg"><div class="ldot" style="background:var(--feed-color)"></div>Feed</div>
     <div class="leg"><div class="ldot" style="background:var(--stories-color)"></div>Stories</div>
     <div class="leg"><div class="ldot" style="background:var(--extra-color)"></div>Demanda extra</div>
@@ -313,7 +364,26 @@ canvas#fireworks{position:fixed;inset:0;pointer-events:none;z-index:2999}
     </div>
     <div class="nodate-body" id="nodate-body"></div>
   </div>
-</div>
+  </div><!-- end board-tab -->
+
+  <div class="cal-wrap" id="tab-cal">
+    <div class="cal-top">
+      <div class="cal-month-title" id="cal-month-title">—</div>
+      <div class="cal-controls">
+        <button class="cal-nav-btn" onclick="calChangeMonth(-1)">‹</button>
+        <button class="cal-nav-btn" onclick="calChangeMonth(1)">›</button>
+        <button class="cal-add-btn" onclick="openEvModal()">+ Adicionar data</button>
+      </div>
+    </div>
+    <div class="cal-weekdays">
+      <div class="cal-wd">dom</div><div class="cal-wd">seg</div><div class="cal-wd">ter</div>
+      <div class="cal-wd">qua</div><div class="cal-wd">qui</div><div class="cal-wd">sex</div><div class="cal-wd">sáb</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend" id="cal-legend"></div>
+  </div><!-- end cal-wrap -->
+
+</div><!-- end dash -->
 
 <footer class="footer">
   <span><span class="pdot"></span><span id="conn">Aguardando…</span></span>
@@ -983,5 +1053,198 @@ window.addEventListener('DOMContentLoaded',()=>{
   loadData();
 });
 </script>
+<!-- EVENT MODAL -->
+<div class="ev-overlay" id="ev-overlay" onclick="closeEvModalOutside(event)">
+  <div class="ev-box">
+    <div class="ev-title" id="ev-modal-title">Nova data importante</div>
+    <div class="ev-field">
+      <label class="ev-lbl">Data</label>
+      <input class="ev-inp" type="date" id="ev-date">
+    </div>
+    <div class="ev-field">
+      <label class="ev-lbl">Cliente</label>
+      <select class="ev-sel" id="ev-cliente">
+        <option value="geral">Geral (todos os clientes)</option>
+      </select>
+    </div>
+    <div class="ev-field">
+      <label class="ev-lbl">Descrição</label>
+      <input class="ev-inp" type="text" id="ev-desc" placeholder="Ex: Dia das Mães, Aniversário da loja...">
+    </div>
+    <div id="ev-day-list"></div>
+    <div class="ev-btns">
+      <button class="ev-save" onclick="saveEvent()">Salvar</button>
+      <button class="ev-cancel" onclick="closeEvModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── CALENDAR ────────────────────────────── */
+const CAL_STORAGE_KEY = 'dua_cal_events_alexia';
+let calEvents = JSON.parse(localStorage.getItem(CAL_STORAGE_KEY)||'[]');
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let editingDate = null;
+
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+/* Color map for clients — reuses existing CLI_COLORS if available */
+const CAL_CLIENT_COLORS = {
+  'geral':       {bg:'rgba(245,230,66,.15)',  color:'#F5E642'},
+  'Andirá Jeans':{bg:'rgba(244,114,182,.18)', color:'#F472B6'},
+  'Amiche':      {bg:'rgba(167,139,250,.18)', color:'#A78BFA'},
+  'Del Carmen':  {bg:'rgba(251,146,60,.18)',  color:'#FB923C'},
+  'Doce Caju':   {bg:'rgba(52,211,153,.18)',  color:'#34D399'},
+  'Eloah':       {bg:'rgba(96,165,250,.18)',  color:'#60A5FA'},
+  'Flora Minha': {bg:'rgba(236,72,153,.18)',  color:'#EC4899'},
+  'Kyrefh Jeans':{bg:'rgba(132,204,22,.18)',  color:'#84CC16'},
+  'Marry Blue':  {bg:'rgba(14,165,233,.18)',  color:'#0EA5E9'},
+  'Nina & Noz':  {bg:'rgba(234,179,8,.18)',   color:'#EAB308'},
+  'Sun Liv':     {bg:'rgba(99,102,241,.18)',  color:'#6366F1'},
+  'Naromo':      {bg:'rgba(239,68,68,.18)',   color:'#EF4444'},
+  'Tchu Bi':     {bg:'rgba(20,184,166,.18)',  color:'#14B8A6'},
+};
+
+function getCalColor(cliente) {
+  return CAL_CLIENT_COLORS[cliente] || {bg:'rgba(136,136,132,.2)', color:'#888884'};
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='board')||(i===1&&tab==='cal')));
+  document.getElementById('tab-board').classList.toggle('visible', tab==='board');
+  document.getElementById('tab-cal').classList.toggle('visible', tab==='cal');
+  if(tab==='cal') renderCal();
+}
+
+function calChangeMonth(dir) {
+  calMonth += dir;
+  if(calMonth>11){calMonth=0;calYear++;}
+  if(calMonth<0){calMonth=11;calYear--;}
+  renderCal();
+}
+
+function renderCal() {
+  document.getElementById('cal-month-title').textContent = `${MONTHS_PT[calMonth]} ${calYear}`;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const today = new Date();
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+
+  /* Fill leading empty cells */
+  for(let i=0;i<firstDay;i++){
+    const prevDate = new Date(calYear, calMonth, -firstDay+i+1);
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell other-month';
+    cell.innerHTML = `<div class="cal-day-num">${prevDate.getDate()}</div>`;
+    grid.appendChild(cell);
+  }
+
+  /* Fill days */
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    const dayEvents = calEvents.filter(e=>e.date===dateStr);
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell'+(isToday?' today':'')+(dayEvents.length?' has-events':'');
+    let html = `<div class="cal-day-num">${d}</div>`;
+    dayEvents.forEach(ev=>{
+      const c = getCalColor(ev.cliente);
+      html+=`<div class="cal-event" style="background:${c.bg};color:${c.color}" title="${ev.desc} — ${ev.cliente}">${ev.desc}</div>`;
+    });
+    cell.innerHTML = html;
+    cell.onclick = ()=>openEvModal(dateStr);
+    grid.appendChild(cell);
+  }
+
+  /* Build legend from unique clients in this month */
+  buildCalLegend();
+}
+
+function buildCalLegend() {
+  const monthStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  const monthEvents = calEvents.filter(e=>e.date.startsWith(monthStr));
+  const uniqueClients = [...new Set(monthEvents.map(e=>e.cliente))];
+  const legend = document.getElementById('cal-legend');
+  legend.innerHTML = uniqueClients.map(c=>{
+    const col = getCalColor(c);
+    return `<div class="cal-leg"><div class="cal-leg-dot" style="background:${col.color}"></div>${c==='geral'?'Geral':c}</div>`;
+  }).join('');
+}
+
+function populateClientSelect() {
+  const sel = document.getElementById('ev-cliente');
+  sel.innerHTML = '<option value="geral">Geral (todos os clientes)</option>';
+  const clients = Object.keys(CAL_CLIENT_COLORS).filter(c=>c!=='geral');
+  clients.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+function openEvModal(dateStr='') {
+  populateClientSelect();
+  editingDate = dateStr || null;
+  const title = document.getElementById('ev-modal-title');
+
+  if(dateStr) {
+    const dayEvents = calEvents.filter(e=>e.date===dateStr);
+    if(dayEvents.length) {
+      title.textContent = 'Datas do dia';
+      const list = document.getElementById('ev-day-list');
+      list.innerHTML = `<div class="ev-list">${dayEvents.map((ev,i)=>{
+        const c=getCalColor(ev.cliente);
+        return `<div class="ev-item">
+          <div style="width:7px;height:7px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
+          <div class="ev-item-name">${ev.desc}</div>
+          <div class="ev-item-cli">${ev.cliente==='geral'?'Geral':ev.cliente}</div>
+          <button class="ev-item-del" onclick="deleteEvent(${calEvents.indexOf(ev)})">✕</button>
+        </div>`;
+      }).join('')}</div><div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);margin:10px 0 4px;font-weight:500">Adicionar nova</div>`;
+    } else {
+      title.textContent = 'Adicionar data';
+      document.getElementById('ev-day-list').innerHTML = '';
+    }
+    document.getElementById('ev-date').value = dateStr;
+  } else {
+    title.textContent = 'Adicionar data importante';
+    document.getElementById('ev-day-list').innerHTML = '';
+    document.getElementById('ev-date').value = '';
+  }
+
+  document.getElementById('ev-desc').value = '';
+  document.getElementById('ev-overlay').classList.add('open');
+}
+
+function closeEvModal() {
+  document.getElementById('ev-overlay').classList.remove('open');
+}
+
+function closeEvModalOutside(e) {
+  if(e.target===document.getElementById('ev-overlay')) closeEvModal();
+}
+
+function saveEvent() {
+  const date = document.getElementById('ev-date').value;
+  const cliente = document.getElementById('ev-cliente').value;
+  const desc = document.getElementById('ev-desc').value.trim();
+  if(!date||!desc) return;
+  calEvents.push({date, cliente, desc});
+  localStorage.setItem(CAL_STORAGE_KEY, JSON.stringify(calEvents));
+  closeEvModal();
+  renderCal();
+}
+
+function deleteEvent(idx) {
+  calEvents.splice(idx,1);
+  localStorage.setItem(CAL_STORAGE_KEY, JSON.stringify(calEvents));
+  closeEvModal();
+  renderCal();
+}
+</script>
+
 </body>
 </html>
